@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="PurchaseMapper">
+
+    <resultMap type="purchase" id="purchaseSelectMap">
+		<result property="tranNo" 				column="TRAN_NO" 		jdbcType="INTEGER"/>
+  		<result property="purchaseProd.prodNo" 	column="PROD_NO" 		jdbcType="INTEGER"/>
+  		<result property="buyer.userId" 		column="BUYER_ID"		jdbcType="VARCHAR"/>
+  		<result property="paymentOption"		column="PAYMENT_OPTION" jdbcType="CHAR"/>
+  		<result property="receiverName" 		column="RECEIVER_NAME" 	jdbcType="VARCHAR"/>
+  		<result property="receiverPhone" 		column="RECEIVER_PHONE" jdbcType="VARCHAR"/>
+  		<result property="divyAddr" 			column="DLVY_ADDR" 		jdbcType="VARCHAR"/>
+  		<result property="divyRequest" 			column="DLVY_REQUEST" 	jdbcType="VARCHAR"/>
+  		<result property="tranCode" 			column="TRAN_STATUS_CODE" 	jdbcType="CHAR"/>
+  		<result property="orderDate" 			column="ORDER_DATE" 		jdbcType="DATE"/>  		 
+  		<result property="divyDate" 			column="DLVY_DATE"		jdbcType="VARCHAR"/>
+  	</resultMap>
+  	
+	 
+	 <select id="findPurchase" parameterType="int"
+		resultMap="purchaseSelectMap">
+		SELECT * FROM TRANSACTION WHERE TRAN_NO = #{tranNo}
+	</select>
+  	
+	<insert id="insertPurchase" parameterType="purchase">
+		INSERT 
+		INTO transaction
+		VALUES (
+					seq_transaction_tran_no.NEXTVAL,
+					#{purchaseProd.prodNo:INTEGER},
+					#{buyer.userId:VARCHAR},
+					#{paymentOption:CHAR},
+					#{receiverName:VARCHAR},
+					#{receiverPhone:VARCHAR},
+					#{divyAddr:VARCHAR},
+					#{divyRequest:VARCHAR},
+					#{tranCode:CHAR},
+					SYSDATE,
+					#{divyDate:VARCHAR} )
+	</insert>
+    
+     <update id="updateTranCode" parameterType="purchase">
+        UPDATE transaction 
+        SET tran_status_code = #{tranCode}
+        WHERE tran_No = #{tranNo}
+    </update>
+    
+    <update id="updatePurchase" parameterType="purchase">
+        UPDATE transaction 
+        SET buyer_id=#{buyer.userId}, 
+            payment_option=#{paymentOption},
+            receiver_name=#{receiverName},
+            receiver_phone=#{receiverPhone, jdbcType=VARCHAR},
+            DLVY_ADDR=#{divyAddr}
+        WHERE tran_no=#{tranNo}
+    </update>
+
+	
+	 
+	 
+	
+<select id="getPurchaseList" parameterType="map" resultMap="purchaseSelectMap">
+    SELECT * 
+    FROM (	
+        SELECT inner_table.*, ROWNUM AS row_seq 
+        FROM (
+            SELECT *
+            FROM transaction where buyer_id = #{userId}
+            ORDER BY order_date DESC
+		) inner_table
+		WHERE ROWNUM &lt;= #{endRowNum, jdbcType=NUMERIC}
+		)
+		WHERE row_seq BETWEEN #{startRowNum, jdbcType=NUMERIC} AND #{endRowNum, jdbcType=NUMERIC}
+</select>
+
+
+<select id="getSaleList" parameterType="search" resultMap="purchaseSelectMap">
+    SELECT * 
+    FROM (
+        SELECT inner_table.*, ROWNUM AS row_seq 
+        FROM (
+            SELECT t.*
+            FROM transaction t
+            LEFT JOIN product p ON t.PROD_NO = p.prod_No
+            <if test="searchCondition != null and searchKeyword != null and searchKeyword != ''">
+                <where>
+                    <if test="searchCondition == 0">
+                        t.PROD_NO = #{searchKeyword}
+                    </if>
+                    <if test="searchCondition == 1">
+						p.PROD_NAME LIKE CONCAT(CONCAT('%', '${searchKeyword}'), '%')
+                    </if>
+                    <if test="searchCondition == 2">
+                        t.BUYER_ID = #{searchKeyword}
+                    </if>
+                </where>
+            </if>
+            ORDER BY order_date DESC
+        ) inner_table
+        WHERE ROWNUM &lt;= #{endRowNum}
+    )
+    WHERE row_seq BETWEEN #{startRowNum} AND #{endRowNum}
+</select>
+
+
+
+
+<select  id="getTotalCount"  parameterType="search" resultType="int">
+    SELECT COUNT(*)
+    FROM(
+        SELECT t.TRAN_NO, t.PROD_NO, t.BUYER_ID
+        FROM transaction t
+        LEFT JOIN product p ON t.PROD_NO = p.prod_No
+        <if test="searchCondition != null">
+            <where>
+                <if test="searchCondition == 0 and searchKeyword !='' ">
+                    t.TRAN_NO = #{searchKeyword}
+                </if>
+                <if test="searchCondition == 1 and searchKeyword !='' ">
+                    p.PROD_NAME LIKE CONCAT(CONCAT('%', '${searchKeyword}'), '%')
+                </if>
+            </where>
+        </if>
+    ) countTable                        
+</select>
+
+	
+	 
+
+</mapper>
+

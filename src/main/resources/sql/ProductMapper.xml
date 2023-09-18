@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- UserMapper.xml :: SQL 를 갖는 MetaData - MyBatis Framework 은 XML MetaData 
+	를 사용 SQL구문을 관리 (SQL은 xml 을 통해 적절히 캡슐화 되어 애플리케이선 외부로 분리함) - SQL문의 입력(?) / 
+	출력(?)을 매핑한다. <== 아래의 select element 참조 -->
+
+<mapper namespace="ProductMapper">
+
+	<resultMap id="productSelectMap" type="product">
+		<result property="prodNo" column="prod_no" jdbcType="NUMERIC" />
+		<result property="prodName" column="prod_name"
+			jdbcType="VARCHAR" />
+		<result property="prodDetail" column="prod_detail"
+			jdbcType="VARCHAR" />
+		<result property="manuDate" column="manufacture_day"
+			jdbcType="VARCHAR" />
+		<result property="price" column="price" jdbcType="NUMERIC" />
+		<result property="fileName" column="image_file"
+			jdbcType="VARCHAR" />
+		<result property="regDate" column="reg_date" jdbcType="DATE" />
+		<result property="proTranCode" column="tran_status_code" jdbcType="CHAR" />
+		<result property="count" column="count" jdbcType="NUMERIC" />
+	</resultMap>
+
+	<insert id="insertProduct" parameterType="product">
+		INSERT INTO PRODUCT
+		VALUES (seq_product_prod_no.nextval, #{prodName}, #{prodDetail},
+		#{manuDate,
+		jdbcType=VARCHAR}, #{price, jdbcType=NUMERIC}, #{fileName},
+		SYSDATE, #{count})
+	</insert>
+
+	<select id="findProduct" parameterType="int"
+		resultMap="productSelectMap">
+		SELECT * FROM PRODUCT WHERE PROD_NO = #{prodNo}
+	</select>
+
+	<update id="updateProduct" parameterType="product">
+		UPDATE PRODUCT
+		SET
+		PROD_NAME = #{prodName},
+		PROD_DETAIL = #{prodDetail},
+		MANUFACTURE_DAY =
+		REPLACE(#{manuDate}, '-', ''),
+		PRICE = #{price},
+		IMAGE_FILE =
+		#{fileName}
+		WHERE PROD_NO = #{prodNo}
+	</update>
+
+
+
+
+
+	<select id="getProductList" parameterType="search" resultMap="productSelectMap">
+    SELECT *
+    FROM (
+        SELECT inner_table.*, ROWNUM AS row_seq
+        FROM (
+            SELECT
+            p.PROD_NO, p.PROD_NAME, p.PRICE, t.tran_status_code, p.MANUFACTURE_DAY, p.count, p.image_file
+            FROM PRODUCT p
+            LEFT JOIN (
+                SELECT DISTINCT PROD_NO, tran_status_code
+                FROM TRANSACTION
+            ) t ON p.PROD_NO = t.PROD_NO
+            <if test="searchCondition != null">
+                <where>
+                    <if test="searchCondition == 0 and searchKeyword !='' ">
+                        p.PROD_NO LIKE CONCAT(CONCAT('%', ${searchKeyword}), '%')
+                    </if>
+                    <if test="searchCondition == 1 and searchKeyword !='' ">
+                        p.PROD_NAME LIKE CONCAT(CONCAT('%', '${searchKeyword}'), '%')
+                    </if>
+                    <if test="searchCondition == 2 and searchKeyword !='' ">
+                        p.PRICE = ${searchKeyword}
+                    </if>
+                </where>
+            </if>
+            ORDER BY p.REG_DATE DESC
+        ) inner_table
+        WHERE ROWNUM &lt;= #{endRowNum}
+    )
+    WHERE row_seq BETWEEN #{startRowNum} AND #{endRowNum}
+</select>
+
+
+
+
+	<!-- Total Count 쿼리 -->
+	<select id="getTotalCount" parameterType="search"
+		resultType="int">
+		SELECT COUNT(*)
+		FROM (SELECT PROD_NO,PROD_NAME,PRICE
+		from product
+		<if test="searchCondition != null">
+			<where>
+				<if test="searchCondition == 0 and searchKeyword !=''">
+					PROD_NO = #{searchKeyword,jdbcType=INTEGER}
+				</if>
+				<if test="searchCondition == 1 and searchKeyword !=''">
+					PROD_NAME LIKE CONCAT(CONCAT('%', '${searchKeyword}'), '%')
+				</if>
+				<if test="searchCondition == 2 and searchKeyword !=''">
+					PRICE = #{searchKeyword}
+				</if>
+			</where>
+		</if>
+		) countTable
+	</select>
+	
+	<update id="decrementCount" parameterType="int">
+    UPDATE product 
+    SET count = count - 1
+    WHERE prod_no = #{prodNo}
+	</update>
+	
+
+
+
+
+</mapper>
+  	
